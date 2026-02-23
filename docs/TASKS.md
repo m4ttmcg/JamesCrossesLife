@@ -21,6 +21,9 @@ Finish the missing game implementation and ship a complete static "James Crosses
 - [x] Add PNG icon set variants and manifest references
 - [x] Final verification pass before commit
 - [x] Create initial git commit
+- [x] Obstacle icon variety pass (homework/training/chores use different motifs)
+- [x] Animate James movement (hop/stride between tiles)
+- [x] Add custom dramatic game-over stinger (not exact copyrighted GTA asset)
 
 ## Notes
 

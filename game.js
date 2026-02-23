@@ -24,6 +24,11 @@
     { key: "training", laneColor: "#d67070", laneShade: "#bf5959", obstacle: "#722b2b", obstacleAccent: "#ffd5d5" },
     { key: "chores", laneColor: "#6fa3de", laneShade: "#588bc4", obstacle: "#21476f", obstacleAccent: "#d4e7fb" },
   ];
+  const OBSTACLE_VARIANTS = {
+    homework: ["books", "worksheet", "pencilcase"],
+    training: ["cone", "ball", "dumbbell"],
+    chores: ["bucket", "basket", "mopkit"],
+  };
 
   const dom = {
     canvas: document.getElementById("gameCanvas"),
@@ -159,6 +164,11 @@
       if (name === "move") this.pulse(420, 0.06, { vol: 0.015, slideTo: 500 });
       else if (name === "bump") this.pulse(150, 0.07, { vol: 0.012, type: "triangle" });
       else if (name === "hit") this.pulse(140, 0.14, { vol: 0.03, type: "sawtooth", slideTo: 80 });
+      else if (name === "downer") {
+        this.pulse(330, 0.10, { vol: 0.016, type: "triangle", slideTo: 220 });
+        this.pulse(196, 0.22, { vol: 0.022, type: "sawtooth", delay: 0.08, slideTo: 110 });
+        this.pulse(146, 0.42, { vol: 0.026, type: "triangle", delay: 0.14, slideTo: 73 });
+      }
       else if (name === "ui") this.pulse(520, 0.05, { vol: 0.012, type: "triangle" });
       else if (name === "pause") {
         this.pulse(330, 0.05, { vol: 0.012 });
@@ -216,6 +226,7 @@
     dodgedRows: new Set(),
     score: 0,
     lastResult: null,
+    moveAnim: null,
   };
 
   const currentDifficultyKey = () => (DIFFICULTIES[store.settings.difficulty] ? store.settings.difficulty : "classic");
@@ -243,7 +254,13 @@
         const seed = row * 100 + i * 13;
         const width = clamp(0.85 + hash01(seed) * widthBias, 0.85, Math.max(1.05, spacing - 1.65));
         const jitter = (hash01(seed + 7) - 0.5) * 0.35;
-        items.push({ base: i * spacing + jitter, width });
+        const variants = OBSTACLE_VARIANTS[type.key] || ["box"];
+        items.push({
+          base: i * spacing + jitter,
+          width,
+          variant: variants[(row + i) % variants.length],
+          seed,
+        });
       }
       lanes[row] = { kind: "obstacle", type, dir, speed, cycleLen, offset: hash01(row * 8.91 + 5) * cycleLen, items };
     }
@@ -431,6 +448,7 @@
     game.dodgedRows = new Set();
     game.score = 0;
     game.lastResult = null;
+    game.moveAnim = null;
     updateHud();
   }
 
@@ -497,6 +515,7 @@
       haptic([30, 35, 50]);
       setToolbarNote("Win saved to local leaderboard.", 2200);
     } else {
+      audio.playSfx("downer");
       audio.playSfx("hit");
       haptic([25, 30, 25]);
       setToolbarNote("Run over. Stats saved locally.", 2200);
@@ -521,8 +540,19 @@
       return false;
     }
 
+    const prevRow = game.player.row;
+    const prevCol = game.player.col;
     game.player.row = Math.min(row, game.world.targetRows);
     game.player.col = col;
+    game.moveAnim = {
+      fromRow: prevRow,
+      fromCol: prevCol,
+      toRow: game.player.row,
+      toCol: game.player.col,
+      startMs: performance.now(),
+      durationMs: 110,
+      dir,
+    };
     if (game.player.row > game.furthest) game.furthest = game.player.row;
     const lane = laneAt(game.player.row);
     if (lane?.kind === "obstacle" && !game.dodgedRows.has(game.player.row)) {
@@ -545,6 +575,18 @@
     ctx.arcTo(x, y + h, x, y, rr);
     ctx.arcTo(x, y, x + w, y, rr);
     ctx.closePath();
+  }
+
+  function drawCircleStroke(x, y, r, fill, stroke, lw) {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = lw;
+      ctx.stroke();
+    }
   }
 
   function drawLaneBackground(layout, y, lane, even) {
@@ -588,21 +630,91 @@
     ctx.fill();
     ctx.fillStyle = lane.type.obstacleAccent;
     if (lane.type.key === "homework") {
-      const lineH = Math.max(1, Math.floor(dpr));
-      ctx.fillRect(x + w * 0.16, oy + h * 0.28, w * 0.68, lineH);
-      ctx.fillRect(x + w * 0.16, oy + h * 0.47, w * 0.56, lineH);
-      ctx.fillRect(x + w * 0.16, oy + h * 0.66, w * 0.62, lineH);
+      if (obs.variant === "books") {
+        ctx.fillRect(x + w * 0.18, oy + h * 0.55, w * 0.64, h * 0.12);
+        ctx.fillStyle = "#c25a47";
+        ctx.fillRect(x + w * 0.22, oy + h * 0.36, w * 0.48, h * 0.12);
+        ctx.fillStyle = lane.type.obstacleAccent;
+        ctx.fillRect(x + w * 0.18, oy + h * 0.24, w * 0.56, h * 0.08);
+      } else if (obs.variant === "worksheet") {
+        ctx.fillStyle = "#f8f0d7";
+        roundedRect(x + w * 0.2, oy + h * 0.14, w * 0.56, h * 0.56, 4 * dpr);
+        ctx.fill();
+        ctx.fillStyle = "#6d5527";
+        const lineH = Math.max(1, Math.floor(dpr));
+        ctx.fillRect(x + w * 0.28, oy + h * 0.28, w * 0.34, lineH);
+        ctx.fillRect(x + w * 0.28, oy + h * 0.42, w * 0.28, lineH);
+        ctx.fillRect(x + w * 0.28, oy + h * 0.56, w * 0.3, lineH);
+      } else {
+        ctx.fillStyle = "#f2cd5a";
+        roundedRect(x + w * 0.14, oy + h * 0.30, w * 0.64, h * 0.24, 4 * dpr);
+        ctx.fill();
+        ctx.fillStyle = "#7c4e1f";
+        ctx.fillRect(x + w * 0.66, oy + h * 0.22, w * 0.06, h * 0.18);
+        ctx.fillStyle = "#3e2b1b";
+        ctx.fillRect(x + w * 0.2, oy + h * 0.38, w * 0.5, Math.max(1, dpr));
+      }
     } else if (lane.type.key === "training") {
-      ctx.beginPath();
-      ctx.moveTo(x + w * 0.18, oy + h * 0.82);
-      ctx.lineTo(x + w * 0.5, oy + h * 0.2);
-      ctx.lineTo(x + w * 0.82, oy + h * 0.82);
-      ctx.closePath();
-      ctx.fill();
+      if (obs.variant === "cone") {
+        ctx.beginPath();
+        ctx.moveTo(x + w * 0.22, oy + h * 0.84);
+        ctx.lineTo(x + w * 0.5, oy + h * 0.18);
+        ctx.lineTo(x + w * 0.78, oy + h * 0.84);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#fff6f6";
+        ctx.fillRect(x + w * 0.33, oy + h * 0.56, w * 0.34, h * 0.08);
+      } else if (obs.variant === "ball") {
+        drawCircleStroke(x + w * 0.5, oy + h * 0.49, Math.min(w, h) * 0.2, "#f9ecec", "#722b2b", Math.max(1, dpr));
+        ctx.beginPath();
+        ctx.arc(x + w * 0.5, oy + h * 0.49, Math.min(w, h) * 0.2, Math.PI * 0.15, Math.PI * 1.15);
+        ctx.strokeStyle = "#722b2b";
+        ctx.lineWidth = Math.max(1, dpr);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = "#d7dde8";
+        roundedRect(x + w * 0.16, oy + h * 0.35, w * 0.24, h * 0.18, 4 * dpr);
+        ctx.fill();
+        roundedRect(x + w * 0.60, oy + h * 0.35, w * 0.24, h * 0.18, 4 * dpr);
+        ctx.fill();
+        ctx.strokeStyle = lane.type.obstacleAccent;
+        ctx.lineWidth = Math.max(2 * dpr, 1);
+        ctx.beginPath();
+        ctx.moveTo(x + w * 0.34, oy + h * 0.44);
+        ctx.lineTo(x + w * 0.66, oy + h * 0.44);
+        ctx.stroke();
+      }
     } else {
-      ctx.fillRect(x + w * 0.2, oy + h * 0.25, w * 0.6, h * 0.12);
-      ctx.fillRect(x + w * 0.27, oy + h * 0.45, w * 0.46, h * 0.12);
-      ctx.fillRect(x + w * 0.34, oy + h * 0.65, w * 0.32, h * 0.12);
+      if (obs.variant === "bucket") {
+        ctx.fillStyle = "#dbeaf8";
+        roundedRect(x + w * 0.26, oy + h * 0.28, w * 0.46, h * 0.38, 4 * dpr);
+        ctx.fill();
+        ctx.strokeStyle = "#dbeaf8";
+        ctx.lineWidth = Math.max(1, dpr);
+        ctx.beginPath();
+        ctx.arc(x + w * 0.49, oy + h * 0.3, w * 0.16, Math.PI, 0);
+        ctx.stroke();
+      } else if (obs.variant === "basket") {
+        ctx.fillStyle = "#d7b07c";
+        roundedRect(x + w * 0.18, oy + h * 0.38, w * 0.64, h * 0.24, 4 * dpr);
+        ctx.fill();
+        ctx.strokeStyle = "#f5e3c8";
+        ctx.lineWidth = Math.max(1, dpr);
+        for (let k = 0; k < 4; k += 1) {
+          const lx = x + w * (0.26 + k * 0.12);
+          ctx.beginPath();
+          ctx.moveTo(lx, oy + h * 0.40);
+          ctx.lineTo(lx, oy + h * 0.60);
+          ctx.stroke();
+        }
+      } else {
+        ctx.fillStyle = "#d8edf8";
+        ctx.fillRect(x + w * 0.22, oy + h * 0.50, w * 0.5, h * 0.08);
+        ctx.fillStyle = "#f2c56d";
+        ctx.fillRect(x + w * 0.62, oy + h * 0.20, w * 0.08, h * 0.36);
+        ctx.fillStyle = "#f7fbff";
+        ctx.fillRect(x + w * 0.18, oy + h * 0.42, w * 0.12, h * 0.2);
+      }
     }
   }
 
@@ -628,16 +740,31 @@
 
   function drawPlayer(layout, timeSec) {
     const skin = SKINS[currentSkinKey()] || SKINS.classic;
-    const bob = Math.sin(timeSec * 8) * layout.tile * 0.02;
-    const x = layout.x0 + game.player.col * layout.tile;
-    const y = layout.height - (game.player.row - game.cameraRow + 1) * layout.tile + bob;
+    let drawCol = game.player.col;
+    let drawRow = game.player.row;
+    let hop = 0;
+    if (game.moveAnim) {
+      const t = clamp((performance.now() - game.moveAnim.startMs) / game.moveAnim.durationMs, 0, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      drawCol = game.moveAnim.fromCol + (game.moveAnim.toCol - game.moveAnim.fromCol) * eased;
+      drawRow = game.moveAnim.fromRow + (game.moveAnim.toRow - game.moveAnim.fromRow) * eased;
+      hop = Math.sin(t * Math.PI) * layout.tile * 0.14;
+      if (t >= 1) game.moveAnim = null;
+    }
+    const idleBob = Math.sin(timeSec * 8) * layout.tile * 0.02;
+    const x = layout.x0 + drawCol * layout.tile;
+    const y = layout.height - (drawRow - game.cameraRow + 1) * layout.tile + idleBob - hop;
     const px = x + layout.tile * 0.17;
     const py = y + layout.tile * 0.12;
     const pw = layout.tile * 0.66;
     const ph = layout.tile * 0.76;
+    const stride = game.moveAnim ? Math.sin(((performance.now() - game.moveAnim.startMs) / game.moveAnim.durationMs) * Math.PI) * pw * 0.06 : 0;
     ctx.fillStyle = skin.pants;
     roundedRect(px + pw * 0.1, py + ph * 0.5, pw * 0.8, ph * 0.35, 5 * dpr);
     ctx.fill();
+    ctx.fillStyle = skin.pants;
+    ctx.fillRect(px + pw * 0.18 - stride, py + ph * 0.7, pw * 0.12, ph * 0.16);
+    ctx.fillRect(px + pw * 0.58 + stride, py + ph * 0.7, pw * 0.12, ph * 0.16);
     ctx.fillStyle = skin.shirt;
     roundedRect(px, py + ph * 0.2, pw, ph * 0.4, 6 * dpr);
     ctx.fill();

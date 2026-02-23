@@ -25,6 +25,8 @@ Finish the missing game implementation and ship a complete static "James Crosses
 - [x] Animate James movement (hop/stride between tiles)
 - [x] Add custom dramatic game-over stinger (not exact copyrighted GTA asset)
 - [x] Replace abstract obstacle glyphs with local SVG sprite assets (`assets/obstacles/*.svg`)
+- [x] Add PNG + embedded data-URI sprite fallback for reliable local canvas rendering
+- [x] Add repo roadmap notes for post-MVP polish (`docs/FUTURE_PLANS.md`)
 
 ## Notes
 

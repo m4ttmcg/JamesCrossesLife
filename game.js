@@ -84,7 +84,30 @@
         if (obstacleSprites[name]) continue;
         const img = new Image();
         img.decoding = "async";
-        img.src = `assets/obstacles/${name}.svg`;
+        img.datasetState = "loading";
+        const embeddedMap = window.OBSTACLE_SPRITES_DATA || null;
+        const candidates = [];
+        if (embeddedMap && embeddedMap[name]) candidates.push(embeddedMap[name]);
+        candidates.push(`assets/obstacles/${name}.png`);
+        candidates.push(`assets/obstacles/${name}.svg`);
+        img._srcCandidates = candidates;
+        img._srcIndex = -1;
+        const loadNextCandidate = () => {
+          img._srcIndex += 1;
+          if (img._srcIndex >= img._srcCandidates.length) {
+            img.datasetState = "error";
+            return;
+          }
+          img.datasetState = "loading";
+          img.src = img._srcCandidates[img._srcIndex];
+        };
+        img.addEventListener("load", () => {
+          img.datasetState = "loaded";
+        });
+        img.addEventListener("error", () => {
+          loadNextCandidate();
+        });
+        loadNextCandidate();
         obstacleSprites[name] = img;
       }
     }
@@ -429,8 +452,8 @@
     const out = [];
     for (const item of lane.items) {
       const p = mod(item.base + phase, lane.cycleLen);
-      out.push({ x: p, w: item.width });
-      out.push({ x: p - lane.cycleLen, w: item.width });
+      out.push({ x: p, w: item.width, variant: item.variant, seed: item.seed });
+      out.push({ x: p - lane.cycleLen, w: item.width, variant: item.variant, seed: item.seed });
     }
     return out;
   }
@@ -603,11 +626,18 @@
   }
 
   function drawObstacleSpriteTile(img, cx, cy, size, rotation) {
-    if (!img || !img.complete || !img.naturalWidth) return false;
+    if (!img) return false;
+    const ready = img.complete && ((img.naturalWidth && img.naturalWidth > 0) || (img.width && img.width > 0));
+    if (!ready) return false;
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(rotation);
-    ctx.drawImage(img, -size / 2, -size / 2, size, size);
+    try {
+      ctx.drawImage(img, -size / 2, -size / 2, size, size);
+    } catch {
+      ctx.restore();
+      return false;
+    }
     ctx.restore();
     return true;
   }
@@ -760,6 +790,7 @@
     ctx.font = `${Math.round(10 * dpr)}px sans-serif`;
     ctx.textAlign = "left";
     ctx.fillText(`Row ${game.player.row}/${game.world.targetRows}`, x, y + 24 * dpr);
+
   }
 
   function render() {

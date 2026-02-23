@@ -44,3 +44,13 @@ Cloudflare Pages can serve the repository directly as static files.
 - `game.js` - game runtime and local persistence
 - `manifest.webmanifest` - PWA metadata
 - `assets/icon.svg` - app icon
+- `assets/obstacles/` - obstacle sprite source assets + PNGs + embedded sprite bundle
+
+## MVP Notes
+
+- Obstacle art now uses real sprite assets, but some wide obstacle hitboxes still render as repeated sprites inside a card for clarity/simplicity.
+- This is acceptable for MVP and can be refined in a later art pass.
+
+## Future Improvements
+
+See `docs/FUTURE_PLANS.md` for the current roadmap / remaining polish items.

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#e16e2d" />
+  <title>James Crosses Life</title>
+  <link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="hud">
+      <div class="brand">
+        <h1>James Crosses Life</h1>
+        <p>James is sprinting through a week of chores, homework, and sports practice to earn couch + Xbox time.</p>
+      </div>
+      <div class="stats" aria-live="polite" aria-label="Game stats">
+        <div class="stat">
+          <span class="label">Furthest</span>
+          <strong id="furthestValue">0</strong>
+        </div>
+        <div class="stat">
+          <span class="label">Tasks Dodged</span>
+          <strong id="tasksValue">0</strong>
+        </div>
+        <div class="stat">
+          <span class="label">Best Score</span>
+          <strong id="bestScoreValue">0</strong>
+        </div>
+        <div class="stat">
+          <span class="label">Wins</span>
+          <strong id="winsValue">0</strong>
+        </div>
+      </div>
+    </header>
+
+    <section class="toolbar" aria-label="Game actions">
+      <button id="pauseButton" type="button" class="tool-btn">Pause</button>
+      <button id="quickMuteButton" type="button" class="tool-btn">Audio On</button>
+      <button id="fullscreenButton" type="button" class="tool-btn">Fullscreen</button>
+      <span class="toolbar-note" id="toolbarNote">Swipe on the board to move James.</span>
+    </section>
+
+    <section class="game-shell">
+      <canvas id="gameCanvas" aria-label="Game canvas" role="img"></canvas>
+
+      <div class="overlay" id="overlay">
+        <div class="panel">
+          <div class="panel-head">
+            <h2 id="overlayTitle">James Needs a Break</h2>
+            <p id="overlayText">
+              Swipe or use arrows/WASD to help James cross a week of responsibilities and make it to the couch.
+            </p>
+          </div>
+
+          <div class="session-summary" id="sessionSummary" hidden>
+            <div><span>Score</span><strong id="summaryScore">0</strong></div>
+            <div><span>Difficulty</span><strong id="summaryDifficulty">Classic</strong></div>
+            <div><span>Time</span><strong id="summaryTime">0.0s</strong></div>
+          </div>
+
+          <div class="settings-grid" aria-label="Game settings">
+            <label class="field">
+              <span>Difficulty</span>
+              <select id="difficultySelect">
+                <option value="chill">Chill</option>
+                <option value="classic" selected>Classic</option>
+                <option value="chaos">Chaos</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>James Style</span>
+              <select id="skinSelect">
+                <option value="classic" selected>Classic James</option>
+                <option value="varsity">Varsity James</option>
+                <option value="hoodie">Hoodie James</option>
+                <option value="pajama">Pajama James</option>
+              </select>
+            </label>
+
+            <label class="toggle">
+              <input id="soundToggle" type="checkbox" checked />
+              <span>Sound Effects</span>
+            </label>
+            <label class="toggle">
+              <input id="musicToggle" type="checkbox" checked />
+              <span>Background Chiptune</span>
+            </label>
+            <label class="toggle">
+              <input id="hapticsToggle" type="checkbox" checked />
+              <span>Touch Haptics</span>
+            </label>
+          </div>
+
+          <div class="panel-actions">
+            <button id="secondaryButton" type="button" class="btn ghost" hidden>Resume</button>
+            <button id="startButton" type="button" class="btn">Start Game</button>
+          </div>
+
+          <section class="leaderboard" aria-label="Local leaderboard">
+            <div class="leaderboard-head">
+              <h3>Local Best Runs</h3>
+              <button id="resetScoresButton" type="button" class="link-btn">Reset Scores</button>
+            </div>
+            <ol id="leaderboardList"></ol>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="controls" aria-label="Touch controls">
+      <div class="dpad">
+        <button type="button" class="ctrl up" data-dir="up" aria-label="Move up">UP</button>
+        <button type="button" class="ctrl left" data-dir="left" aria-label="Move left">LEFT</button>
+        <button type="button" class="ctrl down" data-dir="down" aria-label="Move down">DOWN</button>
+        <button type="button" class="ctrl right" data-dir="right" aria-label="Move right">RIGHT</button>
+      </div>
+      <p class="hint">Touch friendly. Swipe on the game area, tap the D-pad, or use arrows / WASD.</p>
+    </section>
+
+    <section class="legend" aria-label="Obstacle legend">
+      <article class="legend-card hw">
+        <h3>Homework</h3>
+        <p>Books, worksheets, and assignments roll in waves.</p>
+      </article>
+      <article class="legend-card tr">
+        <h3>Sport Training</h3>
+        <p>Cones, gear, and drills crowd the lane.</p>
+      </article>
+      <article class="legend-card ch">
+        <h3>Chores</h3>
+        <p>Buckets, baskets, and mops block James' route.</p>
+      </article>
+    </section>
+  </main>
+
+  <script src="game.js" defer></script>
+</body>
+</html>

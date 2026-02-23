@@ -68,6 +68,7 @@
   let raf = 0;
   let noteTimer = 0;
   let transientNote = "";
+  const obstacleSprites = Object.create(null);
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const mod = (v, m) => ((v % m) + m) % m;
@@ -76,6 +77,18 @@
     return x - Math.floor(x);
   };
   const formatTime = (ms) => `${(ms / 1000).toFixed(1)}s`;
+
+  function loadObstacleSprites() {
+    for (const names of Object.values(OBSTACLE_VARIANTS)) {
+      for (const name of names) {
+        if (obstacleSprites[name]) continue;
+        const img = new Image();
+        img.decoding = "async";
+        img.src = `assets/obstacles/${name}.svg`;
+        obstacleSprites[name] = img;
+      }
+    }
+  }
 
   function nowISODate() {
     const d = new Date();
@@ -589,6 +602,16 @@
     }
   }
 
+  function drawObstacleSpriteTile(img, cx, cy, size, rotation) {
+    if (!img || !img.complete || !img.naturalWidth) return false;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(rotation);
+    ctx.drawImage(img, -size / 2, -size / 2, size, size);
+    ctx.restore();
+    return true;
+  }
+
   function drawLaneBackground(layout, y, lane, even) {
     if (lane?.kind === "goal") {
       ctx.fillStyle = "#b8e2a8";
@@ -625,96 +648,39 @@
     if (x + w < layout.x0 - layout.tile || x > layout.x0 + layout.boardWidth + layout.tile) return;
     const h = layout.tile * 0.68;
     const oy = y + layout.tile * 0.16;
-    ctx.fillStyle = lane.type.obstacle;
-    roundedRect(x + 2 * dpr, oy, Math.max(6 * dpr, w - 4 * dpr), h, 6 * dpr);
+    const cardX = x + 2 * dpr;
+    const cardW = Math.max(6 * dpr, w - 4 * dpr);
+    ctx.fillStyle = "rgba(10, 14, 22, 0.14)";
+    roundedRect(cardX, oy + h * 0.06, cardW, h, 6 * dpr);
     ctx.fill();
-    ctx.fillStyle = lane.type.obstacleAccent;
-    if (lane.type.key === "homework") {
-      if (obs.variant === "books") {
-        ctx.fillRect(x + w * 0.18, oy + h * 0.55, w * 0.64, h * 0.12);
-        ctx.fillStyle = "#c25a47";
-        ctx.fillRect(x + w * 0.22, oy + h * 0.36, w * 0.48, h * 0.12);
-        ctx.fillStyle = lane.type.obstacleAccent;
-        ctx.fillRect(x + w * 0.18, oy + h * 0.24, w * 0.56, h * 0.08);
-      } else if (obs.variant === "worksheet") {
-        ctx.fillStyle = "#f8f0d7";
-        roundedRect(x + w * 0.2, oy + h * 0.14, w * 0.56, h * 0.56, 4 * dpr);
-        ctx.fill();
-        ctx.fillStyle = "#6d5527";
-        const lineH = Math.max(1, Math.floor(dpr));
-        ctx.fillRect(x + w * 0.28, oy + h * 0.28, w * 0.34, lineH);
-        ctx.fillRect(x + w * 0.28, oy + h * 0.42, w * 0.28, lineH);
-        ctx.fillRect(x + w * 0.28, oy + h * 0.56, w * 0.3, lineH);
-      } else {
-        ctx.fillStyle = "#f2cd5a";
-        roundedRect(x + w * 0.14, oy + h * 0.30, w * 0.64, h * 0.24, 4 * dpr);
-        ctx.fill();
-        ctx.fillStyle = "#7c4e1f";
-        ctx.fillRect(x + w * 0.66, oy + h * 0.22, w * 0.06, h * 0.18);
-        ctx.fillStyle = "#3e2b1b";
-        ctx.fillRect(x + w * 0.2, oy + h * 0.38, w * 0.5, Math.max(1, dpr));
-      }
-    } else if (lane.type.key === "training") {
-      if (obs.variant === "cone") {
-        ctx.beginPath();
-        ctx.moveTo(x + w * 0.22, oy + h * 0.84);
-        ctx.lineTo(x + w * 0.5, oy + h * 0.18);
-        ctx.lineTo(x + w * 0.78, oy + h * 0.84);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = "#fff6f6";
-        ctx.fillRect(x + w * 0.33, oy + h * 0.56, w * 0.34, h * 0.08);
-      } else if (obs.variant === "ball") {
-        drawCircleStroke(x + w * 0.5, oy + h * 0.49, Math.min(w, h) * 0.2, "#f9ecec", "#722b2b", Math.max(1, dpr));
-        ctx.beginPath();
-        ctx.arc(x + w * 0.5, oy + h * 0.49, Math.min(w, h) * 0.2, Math.PI * 0.15, Math.PI * 1.15);
-        ctx.strokeStyle = "#722b2b";
-        ctx.lineWidth = Math.max(1, dpr);
-        ctx.stroke();
-      } else {
-        ctx.fillStyle = "#d7dde8";
-        roundedRect(x + w * 0.16, oy + h * 0.35, w * 0.24, h * 0.18, 4 * dpr);
-        ctx.fill();
-        roundedRect(x + w * 0.60, oy + h * 0.35, w * 0.24, h * 0.18, 4 * dpr);
-        ctx.fill();
-        ctx.strokeStyle = lane.type.obstacleAccent;
-        ctx.lineWidth = Math.max(2 * dpr, 1);
-        ctx.beginPath();
-        ctx.moveTo(x + w * 0.34, oy + h * 0.44);
-        ctx.lineTo(x + w * 0.66, oy + h * 0.44);
-        ctx.stroke();
-      }
-    } else {
-      if (obs.variant === "bucket") {
-        ctx.fillStyle = "#dbeaf8";
-        roundedRect(x + w * 0.26, oy + h * 0.28, w * 0.46, h * 0.38, 4 * dpr);
-        ctx.fill();
-        ctx.strokeStyle = "#dbeaf8";
-        ctx.lineWidth = Math.max(1, dpr);
-        ctx.beginPath();
-        ctx.arc(x + w * 0.49, oy + h * 0.3, w * 0.16, Math.PI, 0);
-        ctx.stroke();
-      } else if (obs.variant === "basket") {
-        ctx.fillStyle = "#d7b07c";
-        roundedRect(x + w * 0.18, oy + h * 0.38, w * 0.64, h * 0.24, 4 * dpr);
-        ctx.fill();
-        ctx.strokeStyle = "#f5e3c8";
-        ctx.lineWidth = Math.max(1, dpr);
-        for (let k = 0; k < 4; k += 1) {
-          const lx = x + w * (0.26 + k * 0.12);
-          ctx.beginPath();
-          ctx.moveTo(lx, oy + h * 0.40);
-          ctx.lineTo(lx, oy + h * 0.60);
-          ctx.stroke();
-        }
-      } else {
-        ctx.fillStyle = "#d8edf8";
-        ctx.fillRect(x + w * 0.22, oy + h * 0.50, w * 0.5, h * 0.08);
-        ctx.fillStyle = "#f2c56d";
-        ctx.fillRect(x + w * 0.62, oy + h * 0.20, w * 0.08, h * 0.36);
-        ctx.fillStyle = "#f7fbff";
-        ctx.fillRect(x + w * 0.18, oy + h * 0.42, w * 0.12, h * 0.2);
-      }
+    ctx.fillStyle = "rgba(255,255,255,0.82)";
+    roundedRect(cardX, oy, cardW, h, 6 * dpr);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(23,26,31,0.10)";
+    ctx.lineWidth = Math.max(1, dpr);
+    roundedRect(cardX, oy, cardW, h, 6 * dpr);
+    ctx.stroke();
+
+    const img = obstacleSprites[obs.variant];
+    const slotSize = Math.min(h * 0.84, layout.tile * 0.72);
+    const slots = clamp(Math.floor((cardW - 8 * dpr) / (slotSize * 0.78)), 1, 3);
+    const contentW = slots * slotSize + (slots - 1) * (slotSize * 0.12);
+    const startX = cardX + (cardW - contentW) / 2 + slotSize / 2;
+    const centerY = oy + h * 0.5;
+    let drewAny = false;
+    for (let i = 0; i < slots; i += 1) {
+      const cx = startX + i * slotSize * 1.12;
+      const rot = ((obs.seed || 0) % 7 - 3) * 0.015 + (i - (slots - 1) / 2) * 0.025;
+      drewAny = drawObstacleSpriteTile(img, cx, centerY, slotSize, rot) || drewAny;
+    }
+
+    if (!drewAny) {
+      ctx.fillStyle = lane.type.obstacle;
+      roundedRect(cardX + cardW * 0.18, oy + h * 0.24, cardW * 0.64, h * 0.52, 4 * dpr);
+      ctx.fill();
+      ctx.fillStyle = lane.type.obstacleAccent;
+      ctx.fillRect(cardX + cardW * 0.28, oy + h * 0.38, cardW * 0.44, Math.max(2 * dpr, 1));
+      ctx.fillRect(cardX + cardW * 0.24, oy + h * 0.52, cardW * 0.52, Math.max(2 * dpr, 1));
     }
   }
 
@@ -1034,6 +1000,7 @@
   }
 
   function init() {
+    loadObstacleSprites();
     syncSettingsControls();
     updateHud();
     renderLeaderboard();

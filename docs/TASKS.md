@@ -24,6 +24,7 @@ Finish the missing game implementation and ship a complete static "James Crosses
 - [x] Obstacle icon variety pass (homework/training/chores use different motifs)
 - [x] Animate James movement (hop/stride between tiles)
 - [x] Add custom dramatic game-over stinger (not exact copyrighted GTA asset)
+- [x] Replace abstract obstacle glyphs with local SVG sprite assets (`assets/obstacles/*.svg`)
 
 ## Notes
 

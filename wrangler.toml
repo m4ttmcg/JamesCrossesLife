@@ -6,7 +6,7 @@ pages_build_output_dir = "."
 [[d1_databases]]
 binding = "LEADERBOARD_DB"
 database_name = "jcl-leaderboard-dev"
-database_id = "REPLACE_WITH_DEV_D1_DATABASE_ID"
+database_id = "f686efd1-99b1-4081-aa65-47409e5b93cd"
 
 [vars]
 APP_ENV = "development"
@@ -17,4 +17,5 @@ APP_ENV = "production"
 [[env.production.d1_databases]]
 binding = "LEADERBOARD_DB"
 database_name = "jcl-leaderboard-prod"
-database_id = "REPLACE_WITH_PROD_D1_DATABASE_ID"
+database_id = "4ffdf86a-1713-4163-a897-cae22df4c6bd
+"

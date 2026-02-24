@@ -18,6 +18,21 @@ Last updated: 2026-02-23
 - Add hit / win / loss screen polish animations and better feedback timing.
 - Add a lightweight sprite-atlas pipeline instead of generated embedded `sprites.js`.
 - Add browser smoke tests (Playwright) for basic load/start/pause/persist flows.
+- Add server-side global leaderboard (top 30) with player name submission and no-auth MVP flow.
+- Add backend abuse controls for leaderboard submissions (rate limiting/basic validation) once MVP is live.
+- Add dev/prod environment split for frontend + backend config (Pages Functions bindings, API base, local dev mode).
+
+## In Progress (New Workstream)
+
+- Server-hosted leaderboard:
+  - player name capture (no auth yet)
+  - top 30 global scoreboard
+  - Cloudflare Pages Functions-compatible API
+  - graceful fallback to local leaderboard when server is unavailable
+- Branching / environments:
+  - define `dev` vs `prod` deployment strategy
+  - document Cloudflare Pages + local dev setup
+  - separate environment bindings/config values
 
 ## Deployment Follow-Up
 

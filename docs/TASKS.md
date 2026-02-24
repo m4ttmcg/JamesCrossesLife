@@ -27,6 +27,11 @@ Finish the missing game implementation and ship a complete static "James Crosses
 - [x] Replace abstract obstacle glyphs with local SVG sprite assets (`assets/obstacles/*.svg`)
 - [x] Add PNG + embedded data-URI sprite fallback for reliable local canvas rendering
 - [x] Add repo roadmap notes for post-MVP polish (`docs/FUTURE_PLANS.md`)
+- [x] Server leaderboard backend scaffold: Cloudflare Pages Functions + D1 top-30 endpoint/schema
+- [x] Client integration started: player name + remote leaderboard fetch/submit with local fallback
+- [x] Dev/prod branch/environment docs + Wrangler config scaffold (`docs/ENVIRONMENTS.md`, `wrangler.toml`)
+- [ ] End-to-end validation on Cloudflare Pages + D1 (dev and prod environments)
+- [ ] Remote leaderboard UX polish (wide-card visual cleanup + local/global presentation refinement)
 
 ## Notes
 

@@ -81,6 +81,11 @@
               </select>
             </label>
 
+            <label class="field field-wide">
+              <span>Player Name (Global Leaderboard)</span>
+              <input id="playerNameInput" type="text" maxlength="20" placeholder="Enter a name" autocomplete="nickname" />
+            </label>
+
             <label class="toggle">
               <input id="soundToggle" type="checkbox" checked />
               <span>Sound Effects</span>
@@ -100,11 +105,12 @@
             <button id="startButton" type="button" class="btn">Start Game</button>
           </div>
 
-          <section class="leaderboard" aria-label="Local leaderboard">
+          <section class="leaderboard" aria-label="Leaderboard">
             <div class="leaderboard-head">
-              <h3>Local Best Runs</h3>
-              <button id="resetScoresButton" type="button" class="link-btn">Reset Scores</button>
+              <h3 id="leaderboardTitle">Leaderboard</h3>
+              <button id="resetScoresButton" type="button" class="link-btn">Reset Local Scores</button>
             </div>
+            <p class="leaderboard-status" id="leaderboardStatus">Global Top 30 will appear when the server is configured. Showing local runs for now.</p>
             <ol id="leaderboardList"></ol>
           </section>
         </div>

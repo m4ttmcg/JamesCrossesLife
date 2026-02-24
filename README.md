@@ -54,3 +54,26 @@ Cloudflare Pages can serve the repository directly as static files.
 ## Future Improvements
 
 See `docs/FUTURE_PLANS.md` for the current roadmap / remaining polish items.
+
+## Server Leaderboard (Work In Progress)
+
+This repo now includes the start of a Cloudflare Pages Functions + D1 server leaderboard:
+
+- API route: `functions/api/leaderboard.js`
+- D1 schema: `db/schema.sql`
+- Wrangler config scaffold: `wrangler.toml`
+
+Current behavior:
+
+- Game uses global leaderboard when `/api/leaderboard` is available
+- Falls back to local device leaderboard when server/API is unavailable
+- Player name is captured in the settings overlay (no auth yet)
+
+## Dev / Prod Branching
+
+Recommended branch setup:
+
+- `main` = production
+- `develop` = dev/integration
+
+See `docs/ENVIRONMENTS.md` for Cloudflare Pages + D1 environment notes.

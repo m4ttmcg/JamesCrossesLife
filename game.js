@@ -1,10 +1,13 @@
-(() => {
+﻿(() => {
   "use strict";
 
   const STORAGE_KEY = "james-crosses-life.v1";
   const BOARD_COLS = 9;
   const CAMERA_LEAD_ROWS = 5;
   const MAX_LEADERBOARD = 7;
+  const REMOTE_LEADERBOARD_LIMIT = 30;
+  const PLAYER_NAME_MAX = 20;
+  const LEADERBOARD_API_PATH = "/api/leaderboard";
 
   const DIFFICULTIES = {
     chill: { label: "Chill", targetRows: 22, speedMul: 0.78, density: 0.72, scoreMul: 0.9, safeEvery: 3 },
@@ -50,7 +53,10 @@
     soundToggle: document.getElementById("soundToggle"),
     musicToggle: document.getElementById("musicToggle"),
     hapticsToggle: document.getElementById("hapticsToggle"),
+    playerNameInput: document.getElementById("playerNameInput"),
     leaderboardList: document.getElementById("leaderboardList"),
+    leaderboardTitle: document.getElementById("leaderboardTitle"),
+    leaderboardStatus: document.getElementById("leaderboardStatus"),
     resetScoresButton: document.getElementById("resetScoresButton"),
     furthestValue: document.getElementById("furthestValue"),
     tasksValue: document.getElementById("tasksValue"),
@@ -118,6 +124,16 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
 
+  function normalizePlayerName(value) {
+    const raw = String(value || "").trim().replace(/\s+/g, " ");
+    const cleaned = raw.replace(/[^a-zA-Z0-9 _.'-]/g, "");
+    return cleaned.slice(0, PLAYER_NAME_MAX);
+  }
+
+  function isHttpPage() {
+    return location.protocol === "http:" || location.protocol === "https:";
+  }
+
   function parseJSON(raw, fallback) {
     try {
       return JSON.parse(raw);
@@ -131,6 +147,7 @@
       settings: {
         difficulty: "classic",
         skin: "classic",
+        playerName: "",
         sound: true,
         music: true,
         haptics: true,
@@ -158,6 +175,11 @@
   const saveStore = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
   const isSfxEnabled = () => !!(store.settings.sound && !store.settings.masterMuted);
   const isMusicEnabled = () => !!(store.settings.music && !store.settings.masterMuted);
+  const remoteLeaderboard = {
+    entries: [],
+    status: "idle", // idle | loading | ready | unavailable | error
+    message: "",
+  };
 
   class AudioEngine {
     constructor() {
@@ -388,7 +410,9 @@
     refreshToolbarNote();
   }
 
-  function renderLeaderboard() {
+  function renderLocalLeaderboard() {
+    dom.leaderboardTitle.textContent = "Local Best Runs";
+    dom.leaderboardStatus.textContent = "Server leaderboard unavailable. Showing local runs saved on this device.";
     dom.leaderboardList.innerHTML = "";
     if (!store.leaderboard.length) {
       const li = document.createElement("li");
@@ -401,14 +425,124 @@
       const strong = document.createElement("strong");
       strong.textContent = String(entry.score);
       li.appendChild(strong);
-      li.append(` · ${entry.difficulty} · ${formatTime(entry.timeMs)} · ${entry.win ? "Win" : "Out"} · ${entry.date}`);
+      li.append(` - ${entry.difficulty} - ${formatTime(entry.timeMs)} - ${entry.win ? "Win" : "Out"} - ${entry.date}`);
       dom.leaderboardList.appendChild(li);
     }
   }
 
+  function renderRemoteLeaderboard() {
+    dom.leaderboardTitle.textContent = "Global Top 30";
+    dom.leaderboardStatus.textContent =
+      remoteLeaderboard.status === "loading" ? "Connecting to server leaderboard..." :
+      remoteLeaderboard.status === "ready" ? "Server leaderboard loaded." :
+      remoteLeaderboard.message || "Server leaderboard unavailable. Showing local runs.";
+    dom.leaderboardList.innerHTML = "";
+    if (!remoteLeaderboard.entries.length) {
+      const li = document.createElement("li");
+      li.textContent = "No global scores yet. Set a player name and finish a run to claim the first spot.";
+      dom.leaderboardList.appendChild(li);
+      return;
+    }
+    for (const [index, entry] of remoteLeaderboard.entries.entries()) {
+      const li = document.createElement("li");
+      const strong = document.createElement("strong");
+      strong.textContent = `${index + 1}. ${entry.name}`;
+      li.appendChild(strong);
+      li.append(` - ${entry.score} - ${entry.difficulty} - ${formatTime(entry.timeMs)} - ${entry.win ? "Win" : "Out"}`);
+      dom.leaderboardList.appendChild(li);
+    }
+  }
+
+  function renderLeaderboard() {
+    if (remoteLeaderboard.status === "loading" || remoteLeaderboard.status === "ready") {
+      renderRemoteLeaderboard();
+      return;
+    }
+    renderLocalLeaderboard();
+  }
+
+  async function fetchRemoteLeaderboard() {
+    if (!isHttpPage()) {
+      remoteLeaderboard.status = "unavailable";
+      remoteLeaderboard.message = "Open via a local server or deployment to use the global leaderboard.";
+      renderLeaderboard();
+      return;
+    }
+    remoteLeaderboard.status = "loading";
+    remoteLeaderboard.message = "";
+    renderLeaderboard();
+    try {
+      const response = await fetch(LEADERBOARD_API_PATH, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const entries = Array.isArray(data?.entries) ? data.entries : [];
+      remoteLeaderboard.entries = entries.slice(0, REMOTE_LEADERBOARD_LIMIT).map((entry) => ({
+        name: normalizePlayerName(entry.name || entry.playerName || "Anonymous") || "Anonymous",
+        score: Number(entry.score) || 0,
+        difficulty: String(entry.difficulty || "Classic"),
+        timeMs: Math.max(0, Number(entry.timeMs) || 0),
+        win: !!entry.win,
+      }));
+      remoteLeaderboard.status = "ready";
+      remoteLeaderboard.message = "";
+    } catch {
+      remoteLeaderboard.status = "error";
+      remoteLeaderboard.message = "Server leaderboard could not be reached. Showing local runs.";
+    }
+    renderLeaderboard();
+  }
+
+  async function submitRemoteLeaderboardScore(payload) {
+    if (!isHttpPage()) return false;
+    const playerName = normalizePlayerName(store.settings.playerName);
+    if (!playerName) return false;
+    try {
+      const response = await fetch(LEADERBOARD_API_PATH, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          name: playerName,
+          score: payload.score,
+          difficulty: payload.difficulty,
+          timeMs: payload.timeMs,
+          win: payload.win,
+          date: payload.date,
+        }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json().catch(() => ({}));
+      if (Array.isArray(data?.entries)) {
+        remoteLeaderboard.entries = data.entries.slice(0, REMOTE_LEADERBOARD_LIMIT).map((entry) => ({
+          name: normalizePlayerName(entry.name || entry.playerName || "Anonymous") || "Anonymous",
+          score: Number(entry.score) || 0,
+          difficulty: String(entry.difficulty || "Classic"),
+          timeMs: Math.max(0, Number(entry.timeMs) || 0),
+          win: !!entry.win,
+        }));
+        remoteLeaderboard.status = "ready";
+        remoteLeaderboard.message = "";
+        renderLeaderboard();
+      } else {
+        void fetchRemoteLeaderboard();
+      }
+      return true;
+    } catch {
+      if (remoteLeaderboard.status !== "ready") {
+        remoteLeaderboard.status = "error";
+        remoteLeaderboard.message = "Server leaderboard could not be reached. Showing local runs.";
+        renderLeaderboard();
+      }
+      return false;
+    }
+  }
   function syncSettingsControls() {
     dom.difficultySelect.value = currentDifficultyKey();
     dom.skinSelect.value = currentSkinKey();
+    dom.playerNameInput.value = normalizePlayerName(store.settings.playerName);
     dom.soundToggle.checked = !!store.settings.sound;
     dom.musicToggle.checked = !!store.settings.music;
     dom.hapticsToggle.checked = !!store.settings.haptics;
@@ -543,6 +677,14 @@
     });
     store.leaderboard.sort((a, b) => (b.score - a.score) || (a.timeMs - b.timeMs));
     store.leaderboard = store.leaderboard.slice(0, MAX_LEADERBOARD);
+    const completedRun = {
+      name: normalizePlayerName(store.settings.playerName),
+      score: game.score,
+      difficulty: diffLabel,
+      timeMs: Math.round(game.elapsedMs),
+      win,
+      date: nowISODate(),
+    };
     saveStore();
     updateHud();
     renderLeaderboard();
@@ -559,6 +701,11 @@
     audio.syncMusic();
     updateOverlayForMode();
     syncToolbarButtons();
+    if (completedRun.name) {
+      void submitRemoteLeaderboardScore(completedRun);
+    } else if (isHttpPage()) {
+      setToolbarNote("Set a player name to submit runs to the global leaderboard.", 2600);
+    }
   }
 
   function tryMove(dir) {
@@ -978,6 +1125,18 @@
       render();
       setToolbarNote(`${SKINS[currentSkinKey()].label} selected.`, 1600);
     });
+    dom.playerNameInput.addEventListener("change", () => {
+      const normalized = normalizePlayerName(dom.playerNameInput.value);
+      dom.playerNameInput.value = normalized;
+      store.settings.playerName = normalized;
+      saveStore();
+      if (normalized) {
+        setToolbarNote(`Player name set to ${normalized}.`, 1800);
+        if (isHttpPage()) void fetchRemoteLeaderboard();
+      } else {
+        setToolbarNote("Player name cleared. Global leaderboard submissions disabled.", 2200);
+      }
+    });
     dom.soundToggle.addEventListener("change", () => {
       store.settings.sound = !!dom.soundToggle.checked;
       saveStore();
@@ -999,7 +1158,7 @@
     });
 
     dom.resetScoresButton.addEventListener("click", () => {
-      if (!window.confirm("Reset local leaderboard and best score?")) return;
+      if (!window.confirm("Reset local leaderboard and best score on this device?")) return;
       store.leaderboard = [];
       store.stats.bestScore = 0;
       store.stats.wins = 0;
@@ -1040,6 +1199,7 @@
     syncToolbarButtons();
     bindUI();
     render();
+    void fetchRemoteLeaderboard();
     raf = requestAnimationFrame(loop);
   }
 
@@ -1050,3 +1210,4 @@
 
   init();
 })();
+

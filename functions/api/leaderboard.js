@@ -1,3 +1,5 @@
+import { BLOCKED_EXACT_NAMES, BLOCKED_TERMS } from "../_lib/blocked-terms.js";
+
 const MAX_ENTRIES = 30;
 const NAME_MAX = 20;
 
@@ -15,6 +17,33 @@ function normalizeName(value) {
   const raw = String(value || "").trim().replace(/\s+/g, " ");
   const cleaned = raw.replace(/[^a-zA-Z0-9 _.'-]/g, "");
   return cleaned.slice(0, NAME_MAX);
+}
+
+function normalizeForModeration(value) {
+  const leetMap = {
+    "0": "o",
+    "1": "i",
+    "3": "e",
+    "4": "a",
+    "5": "s",
+    "7": "t",
+    "@": "a",
+    "$": "s",
+    "!": "i",
+  };
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[013457@$!]/g, (ch) => leetMap[ch] || ch)
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function isBlockedPlayerName(name) {
+  const normalized = normalizeForModeration(name);
+  if (!normalized) return false;
+  if (BLOCKED_EXACT_NAMES.includes(normalized)) return true;
+  return BLOCKED_TERMS.some((term) => normalized.includes(normalizeForModeration(term)));
 }
 
 function mapRow(row) {
@@ -99,6 +128,7 @@ export async function onRequestPost(context) {
   const runDate = String(body?.date || "").slice(0, 16);
 
   if (!name) return json({ error: "Player name is required" }, 400);
+  if (isBlockedPlayerName(name)) return json({ error: "Player name is not allowed" }, 400);
   if (!Number.isFinite(score) || score < 0) return json({ error: "Invalid score" }, 400);
 
   try {

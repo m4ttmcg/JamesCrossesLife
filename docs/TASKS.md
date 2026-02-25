@@ -32,6 +32,8 @@ Finish the missing game implementation and ship a complete static "James Crosses
 - [x] Dev/prod branch/environment docs + Wrangler config scaffold (`docs/ENVIRONMENTS.md`, `wrangler.toml`)
 - [ ] End-to-end validation on Cloudflare Pages + D1 (dev and prod environments)
 - [ ] Remote leaderboard UX polish (wide-card visual cleanup + local/global presentation refinement)
+- [x] Server-side player-name content filtering (starter blocklist + normalized matching)
+- [ ] Expand/curate profanity/slur list source and moderation policy before wider release
 
 ## Notes
 

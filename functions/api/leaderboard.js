@@ -39,11 +39,47 @@ function normalizeForModeration(value) {
     .replace(/[^a-z0-9]/g, "");
 }
 
+function moderationTokens(value) {
+  const leetMap = {
+    "0": "o",
+    "1": "i",
+    "3": "e",
+    "4": "a",
+    "5": "s",
+    "7": "t",
+    "@": "a",
+    "$": "s",
+    "!": "i",
+  };
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[013457@$!]/g, (ch) => leetMap[ch] || ch)
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+const BLOCKED_TERM_NORMALIZED = BLOCKED_TERMS.map((term) => normalizeForModeration(term)).filter(Boolean);
+const BLOCKED_EXACT_NORMALIZED = new Set(BLOCKED_EXACT_NAMES.map((term) => normalizeForModeration(term)).filter(Boolean));
+
 function isBlockedPlayerName(name) {
-  const normalized = normalizeForModeration(name);
-  if (!normalized) return false;
-  if (BLOCKED_EXACT_NAMES.includes(normalized)) return true;
-  return BLOCKED_TERMS.some((term) => normalized.includes(normalizeForModeration(term)));
+  const normalizedJoined = normalizeForModeration(name);
+  if (!normalizedJoined) return false;
+  const tokens = moderationTokens(name);
+
+  if (BLOCKED_EXACT_NORMALIZED.has(normalizedJoined)) return true;
+  if (tokens.some((token) => BLOCKED_EXACT_NORMALIZED.has(token))) return true;
+
+  for (const blocked of BLOCKED_TERM_NORMALIZED) {
+    if (!blocked) continue;
+    if (normalizedJoined === blocked) return true; // catches "f.u.c.k" -> "fuck"
+    if (tokens.includes(blocked)) return true; // catches "fuck-you" tokenized
+  }
+
+  return false;
 }
 
 function mapRow(row) {

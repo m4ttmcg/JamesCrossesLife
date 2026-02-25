@@ -514,8 +514,40 @@
         }),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      await response.json().catch(() => ({}));
-      await fetchRemoteLeaderboard();
+      const data = await response.json().catch(() => ({}));
+      if (Array.isArray(data?.entries)) {
+        remoteLeaderboard.entries = data.entries.slice(0, REMOTE_LEADERBOARD_LIMIT).map((entry) => ({
+          name: normalizePlayerName(entry.name || entry.playerName || "Anonymous") || "Anonymous",
+          score: Number(entry.score) || 0,
+          difficulty: String(entry.difficulty || "Classic"),
+          timeMs: Math.max(0, Number(entry.timeMs) || 0),
+          win: !!entry.win,
+        }));
+        remoteLeaderboard.status = "ready";
+        remoteLeaderboard.message = "";
+        renderLeaderboard();
+      } else {
+        // Optimistic client update for immediate feedback if POST response has no entries.
+        remoteLeaderboard.entries = [
+          {
+            name: playerName,
+            score: Number(payload.score) || 0,
+            difficulty: String(payload.difficulty || "Classic"),
+            timeMs: Math.max(0, Number(payload.timeMs) || 0),
+            win: !!payload.win,
+          },
+          ...remoteLeaderboard.entries,
+        ]
+          .sort((a, b) => (b.score - a.score) || (a.timeMs - b.timeMs))
+          .slice(0, REMOTE_LEADERBOARD_LIMIT);
+        remoteLeaderboard.status = "ready";
+        remoteLeaderboard.message = "";
+        renderLeaderboard();
+      }
+
+      // Follow up with a delayed refresh to reconcile any server-side pruning/ordering/replication lag.
+      void fetchRemoteLeaderboard();
+      setTimeout(() => { void fetchRemoteLeaderboard(); }, 900);
       return true;
     } catch {
       if (remoteLeaderboard.status !== "ready") {

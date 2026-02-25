@@ -472,7 +472,7 @@
     remoteLeaderboard.message = "";
     renderLeaderboard();
     try {
-      const response = await fetch(LEADERBOARD_API_PATH, {
+      const response = await fetch(`${LEADERBOARD_API_PATH}?t=${Date.now()}`, {
         method: "GET",
         headers: { Accept: "application/json" },
         cache: "no-store",
@@ -514,21 +514,8 @@
         }),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json().catch(() => ({}));
-      if (Array.isArray(data?.entries)) {
-        remoteLeaderboard.entries = data.entries.slice(0, REMOTE_LEADERBOARD_LIMIT).map((entry) => ({
-          name: normalizePlayerName(entry.name || entry.playerName || "Anonymous") || "Anonymous",
-          score: Number(entry.score) || 0,
-          difficulty: String(entry.difficulty || "Classic"),
-          timeMs: Math.max(0, Number(entry.timeMs) || 0),
-          win: !!entry.win,
-        }));
-        remoteLeaderboard.status = "ready";
-        remoteLeaderboard.message = "";
-        renderLeaderboard();
-      } else {
-        void fetchRemoteLeaderboard();
-      }
+      await response.json().catch(() => ({}));
+      await fetchRemoteLeaderboard();
       return true;
     } catch {
       if (remoteLeaderboard.status !== "ready") {
